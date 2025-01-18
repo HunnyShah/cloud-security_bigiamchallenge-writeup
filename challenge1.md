@@ -75,24 +75,24 @@ aws s3 cp s3://thebigiamchallenge-storage-9979f4b/files/flag1.txt -
 
 ## Reflection
 
-Approach:
+**Approach:**
 
-Familarize with AWS CLI
-Analyzed S3 bucket policy
-Found we could list "files/" directory and get any object
-Used AWS CLI to explore
-Found flag1.txt in files directory
-Used aws s3 cp s3://thebigiamchallenge-storage-9979f4b/files/flag1.txt - to read it
+- Familarize with AWS CLI
+- Analyzed S3 bucket policy
+- Found we could list "files/" directory and get any object
+- Used AWS CLI to explore
+- Found flag1.txt in files directory
+- Used aws s3 cp s3://thebigiamchallenge-storage-9979f4b/files/flag1.txt - to read it
 
-Main Challenge:
+**Main Challenge:**
 
-Didn't knew about AWS CLI Learned through docs online
-Read-only filesystem preventing file downloads
-Solved by streaming to stdout instead of saving file
+- Didn't knew about AWS CLI Learned through docs online
+- Read-only filesystem preventing file downloads
+- Solved by streaming to stdout instead of saving file
 
-Defense Tips:
+**Defense Tips:**
 
-Match GetObject and List permissions properly
-Avoid using "\*" for Principal
-Follow least privilege principle
-Enable S3 Block Public Access settings
+- Match GetObject and List permissions properly
+- Avoid using "\*" for Principal
+- Follow least privilege principle
+- Enable S3 Block Public Access settings
