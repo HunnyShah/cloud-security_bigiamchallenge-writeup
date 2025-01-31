@@ -87,7 +87,7 @@ Shortly after, we checked our **RequestCatcher logs** and found an SNS message w
   "Type": "Notification",
   "MessageId": "abcd-1234",
   "TopicArn": "arn:aws:sns:us-east-1:092297851374:TBICWizPushNotifications",
-  "Message": "Your flag is: FLAG-{sns-subscription-bypass-success}",
+  "Message": "{wiz:always-suspect-asterisks}",
   "Timestamp": "2025-01-31T12:34:56.000Z"
 }
 ```
@@ -95,7 +95,7 @@ Shortly after, we checked our **RequestCatcher logs** and found an SNS message w
 The flag was:
 
 ```
-FLAG-{sns-subscription-bypass-success}
+FLAG-{wiz:always-suspect-asterisks}
 ```
 
 ## Reflection
