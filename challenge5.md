@@ -101,11 +101,37 @@ This challenge involves deploying **CloudFoxable**, an AWS-based CTF environment
    FLAG{congrats_you_are_now_a_terraform_expert_happy_hunting}
    ```
 
-## **Reflection & Lessons Learned**
+## Reflection
 
-- Setting up AWS IAM users correctly is crucial for security.
-- Terraform simplifies cloud infrastructure deployment.
-- Always check Terraform outputs carefully—they often contain important hints.
-- AWS CLI profile management helps in handling multiple user credentials effectively.
+### **What was your approach?**
 
-🎉 **Congratulations! You've successfully completed the first challenge!** 🚀
+- We started by reading the CloudFoxable setup instructions.
+- Installed Terraform and AWS CLI.
+- Configured AWS credentials for both deployment and CTF users.
+- Deployed CloudFoxable using Terraform and retrieved credentials from the output.
+- Verified the setup and found the flag.
+
+### **What was the biggest challenge?**
+
+- Ensuring the correct IAM permissions were in place.
+- Debugging AWS profile issues when Terraform failed to authenticate.
+
+### **How did you overcome the challenges?**
+
+- Double-checked `~/.aws/credentials` for misconfigured profiles.
+- Used `aws sts get-caller-identity` to verify active IAM roles.
+- Re-ran `terraform apply` after fixing AWS credentials.
+
+### **What led to the breakthrough?**
+
+- Carefully reading Terraform outputs and recognizing the starting user’s credentials.
+- Understanding how AWS IAM roles work and ensuring correct permissions.
+
+### **On the blue side, how can the learning be used to properly defend important assets?**
+
+- **Limit IAM policies**: Avoid using overly permissive IAM policies for Terraform deployments.
+- **Use temporary credentials**: Instead of long-term IAM user credentials, enforce temporary credentials with IAM roles.
+- **Audit and monitor AWS activity**: Enable CloudTrail logs to track Terraform deployments and IAM role assumptions.
+- **Restrict access keys**: Rotate and disable unused IAM access keys regularly.
+
+This challenge highlighted the importance of **proper IAM access control** and **Terraform security best practices**. 🚀
