@@ -1,7 +1,5 @@
 # Cloudfoxable 5 - Backwards
 
-# BigIAMChallenge.com - Challenge 10
-
 ## Challenge Statement
 
 In this challenge, we needed to retrieve a hidden flag stored in AWS Secrets Manager. We were given access to an IAM role named `Alexander-Arnold`, which had permissions that could help us access the flag. Our task was to enumerate IAM roles, analyze permissions, and extract the flag from AWS Secrets Manager.
